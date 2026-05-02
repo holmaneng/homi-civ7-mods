@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Database>
+
+	<!-- ============================================================
+	     Feature: Toggle Production Building Info (I key)
+	     Toggles Production Menu between Base Yield and Yield Preview.
+	     ============================================================ -->
+	<InputActions>
+		<Row ActionId="toggle-production-building-info" DeviceType="Keyboard"
+			Name="LOC_UI_KBM_TOGGLE_PRODUCTION_BUILDING_INFO"
+			Description="LOC_UI_KBM_TOGGLE_PRODUCTION_BUILDING_INFO_TT"
+			SortIndex="37" />
+	</InputActions>
+
+	<InputContextConstraints>
+		<Row ActionId="toggle-production-building-info" ContextId="World" />
+		<Row ActionId="toggle-production-building-info" ContextId="Unit" />
+		<Row ActionId="toggle-production-building-info" ContextId="Dual" />
+	</InputContextConstraints>
+
+	<InputActionDefaultGestures>
+		<Row ActionId="toggle-production-building-info" Index="0" GestureType="KBMouse" GestureData="KEY_I" />
+	</InputActionDefaultGestures>
+
+	<!-- Add new input actions below this line -->
+
+</Database>

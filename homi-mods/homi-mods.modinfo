@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mod id="homi-mods" version="1" xmlns="ModInfo">
+	<Properties>
+		<Name>homi-mods</Name>
+		<Description>Quality of life improvements by holman.</Description>
+		<Authors>holman</Authors>
+		<Package>Mod</Package>
+		<AffectsSavedGames>0</AffectsSavedGames>
+	</Properties>
+	<Dependencies>
+		<Mod id="base-standard" title="Base Game" />
+	</Dependencies>
+	<ActionCriteria>
+		<Criteria id="always">
+			<AlwaysMet />
+		</Criteria>
+	</ActionCriteria>
+	<ActionGroups>
+		<!-- Shell scope: register all input actions and text strings -->
+		<ActionGroup id="homi-mods-shell" scope="shell" criteria="always">
+			<Actions>
+				<UpdateDatabase>
+					<Item>config/Input.xml</Item>
+				</UpdateDatabase>
+				<UpdateText>
+					<Item>text/en_us/Text.xml</Item>
+				</UpdateText>
+			</Actions>
+		</ActionGroup>
+		<!-- Game scope: load all JS feature handlers -->
+		<ActionGroup id="homi-mods-game" scope="game" criteria="always">
+			<Actions>
+				<UIScripts>
+					<Item>ui/toggle-production-building-info.js</Item>
+				</UIScripts>
+			</Actions>
+		</ActionGroup>
+	</ActionGroups>
+</Mod>

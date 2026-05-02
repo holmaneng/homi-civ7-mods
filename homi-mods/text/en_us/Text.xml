@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Database>
+	<EnglishText>
+
+		<!-- Feature: Toggle Production Building Info -->
+		<Row Tag="LOC_UI_KBM_TOGGLE_PRODUCTION_BUILDING_INFO">
+			<Text>Toggle Production Info Mode</Text>
+		</Row>
+		<Row Tag="LOC_UI_KBM_TOGGLE_PRODUCTION_BUILDING_INFO_TT">
+			<Text>Toggles the Production Menu between Base Yield and Yield Preview display modes.</Text>
+		</Row>
+
+		<!-- Add new text strings below this line -->
+
+	</EnglishText>
+</Database>
