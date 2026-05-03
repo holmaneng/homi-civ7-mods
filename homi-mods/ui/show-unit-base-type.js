@@ -17,36 +17,39 @@ const LABEL_CLASS = "homi-unit-type-label";
 const style = document.createElement("style");
 style.textContent = `.${LABEL_CLASS} {
     font-size: 0.65em;
-    opacity: 0.65;
+    opacity: 0.75;
+    color: #C8A96E;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-left: 0.55em;
 }`;
 document.head.appendChild(style);
 
-// Roman numeral glyphs for tier 1–5 (Civ 7 currently uses 1–3)
-const TIER_ROMAN = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ"];
+const TIER_ROMAN = ["", "I", "II", "III", "IV", "V"];
 
 // Hardcoded English labels — avoids Locale.compose dependency for mod-defined keys
 // that aren't reliably accessible in game scope.
 const CLASS_LABELS = {
-    UNIT_CLASS_INFANTRY: "Infantry",
-    UNIT_CLASS_RANGED:   "Ranged",
-    UNIT_CLASS_CAVALRY:  "Cavalry",
-    UNIT_CLASS_SIEGE:    "Siege",
-    UNIT_CLASS_NAVAL:    "Naval",
-    UNIT_CLASS_RECON:    "Recon",
+    UNIT_CLASS_COMMAND:   "Commander",
+    UNIT_CLASS_INFANTRY:  "Infantry",
+    UNIT_CLASS_RANGED:    "Ranged",
+    UNIT_CLASS_CAVALRY:   "Cavalry",
+    UNIT_CLASS_SIEGE:     "Siege",
+    UNIT_CLASS_NAVAL:     "Naval",
+    UNIT_CLASS_RECON:     "Recon",
 };
 
 // Priority order: when a unit has multiple UNIT_CLASS tags (e.g. UNIT_GALLEY has both
 // UNIT_CLASS_RECON and UNIT_CLASS_NAVAL), pick the most-specific combat role.
+// UNIT_CLASS_COMMAND wins over everything (Fleet Commander → "Commander", not "Naval").
 const CLASS_PRIORITY_INDEX = new Map([
-    ["UNIT_CLASS_SIEGE",    0],
-    ["UNIT_CLASS_CAVALRY",  1],
-    ["UNIT_CLASS_INFANTRY", 2],
-    ["UNIT_CLASS_RANGED",   3],
-    ["UNIT_CLASS_NAVAL",    4],
-    ["UNIT_CLASS_RECON",    5],
+    ["UNIT_CLASS_COMMAND",  0],
+    ["UNIT_CLASS_SIEGE",    1],
+    ["UNIT_CLASS_CAVALRY",  2],
+    ["UNIT_CLASS_INFANTRY", 3],
+    ["UNIT_CLASS_RANGED",   4],
+    ["UNIT_CLASS_NAVAL",    5],
+    ["UNIT_CLASS_RECON",    6],
 ]);
 
 // unitType string → best UNIT_CLASS_* tag
@@ -159,16 +162,20 @@ function startObservingPanel(panel) {
     });
 }
 
-const existingPanel = document.querySelector("panel-production-chooser");
-if (existingPanel) {
-    startObservingPanel(existingPanel);
-} else {
-    const panelWatcher = new MutationObserver(() => {
-        const panel = document.querySelector("panel-production-chooser");
-        if (panel) {
-            panelWatcher.disconnect();
-            startObservingPanel(panel);
-        }
-    });
-    panelWatcher.observe(document.body, { childList: true, subtree: true });
+// Keep track of the panel element we're currently observing so we don't
+// double-attach when the body watcher fires multiple times for the same panel.
+let observedPanel = null;
+
+function maybeAttachToPanel() {
+    const panel = document.querySelector("panel-production-chooser");
+    if (panel && panel !== observedPanel) {
+        observedPanel = panel;
+        startObservingPanel(panel);
+    }
 }
+
+// Persistent — does NOT disconnect so it catches the panel being recreated on reopen.
+const panelWatcher = new MutationObserver(maybeAttachToPanel);
+panelWatcher.observe(document.body, { childList: true, subtree: true });
+
+maybeAttachToPanel();
