@@ -10,6 +10,14 @@
 			<Text>Toggles the Production Menu between Base Yield and Yield Preview display modes.</Text>
 		</Row>
 
+		<!-- Feature: Show Unit Base Type -->
+		<Row Tag="LOC_HOMI_UNIT_CLASS_INFANTRY"><Text>Infantry</Text></Row>
+		<Row Tag="LOC_HOMI_UNIT_CLASS_RANGED"><Text>Ranged</Text></Row>
+		<Row Tag="LOC_HOMI_UNIT_CLASS_CAVALRY"><Text>Cavalry</Text></Row>
+		<Row Tag="LOC_HOMI_UNIT_CLASS_SIEGE"><Text>Siege</Text></Row>
+		<Row Tag="LOC_HOMI_UNIT_CLASS_NAVAL"><Text>Naval</Text></Row>
+		<Row Tag="LOC_HOMI_UNIT_CLASS_RECON"><Text>Recon</Text></Row>
+
 		<!-- Add new text strings below this line -->
 
 	</EnglishText>
