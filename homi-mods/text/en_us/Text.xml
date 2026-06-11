@@ -18,7 +18,25 @@
 		<Row Tag="LOC_HOMI_UNIT_CLASS_NAVAL"><Text>Naval</Text></Row>
 		<Row Tag="LOC_HOMI_UNIT_CLASS_RECON"><Text>Recon</Text></Row>
 
+		<!-- map-trix-remixed: lens layer checkbox labels -->
+		<Row Tag="LOC_UI_MINI_MAP_BZ_DISCOVERY"><Text>Discoveries</Text></Row>
+		<Row Tag="LOC_UI_MINI_MAP_BZ_CITY_BORDERS"><Text>City Borders</Text></Row>
+
+		<!-- map-trix-remixed: panel hotkeys -->
+		<Row Tag="LOC_UI_KBM_OPEN_BZ_CITY_PANEL">
+			<Text>Open Settlements Panel</Text>
+		</Row>
+		<Row Tag="LOC_UI_KBM_OPEN_BZ_CITY_PANEL_TT">
+			<Text>Toggles the Settlements panel on the minimap.</Text>
+		</Row>
+		<Row Tag="LOC_UI_KBM_OPEN_BZ_UNITS_PANEL">
+			<Text>Open Units Panel</Text>
+		</Row>
+		<Row Tag="LOC_UI_KBM_OPEN_BZ_UNITS_PANEL_TT">
+			<Text>Toggles the Units panel on the minimap.</Text>
+		</Row>
+
 		<!-- Add new text strings below this line -->
 
-	</EnglishText>
+</EnglishText>
 </Database>

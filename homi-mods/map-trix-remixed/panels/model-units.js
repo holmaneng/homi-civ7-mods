@@ -1,0 +1,354 @@
+// Ported from bszonye/civ7-map-trix (model-units.js). No changes.
+
+import LensManager from '/core/ui/lenses/lens-manager.js';
+import { ComponentID } from '/core/ui/utilities/utilities-component-id.js';
+import { Icon } from '/core/ui/utilities/utilities-image.js';
+import UpdateGate from '/core/ui/utilities/utilities-update-gate.js';
+
+const tagTypes = (tag) => GameInfo.TypeTags
+    .filter(e => e.Tag == tag).map(e => Game.getHash(e.Type));
+const TRADER_TYPES = new Set(tagTypes("UNIT_CLASS_TRADE_ROUTE"));
+
+const ACTIVITY_ICONS = new Map([
+    [UnitActivityTypes.NONE, ""],
+    [UnitActivityTypes.AWAKE, ""],
+    [UnitActivityTypes.HOLD, "blp:Action_Skip"],
+    [UnitActivityTypes.SLEEP, "blp:Action_Sleep"],
+    [UnitActivityTypes.HEAL, "blp:Action_Heal"],
+    [UnitActivityTypes.SENTRY, "blp:Action_Wake"],
+    [UnitActivityTypes.INTERCEPT, "blp:Action_Alert"],
+    [UnitActivityTypes.OPERATION, ""],
+    [UnitActivityTypes.JUMP, "blp:Action_Alert"],
+]);
+const ACTIVITY_NAMES = new Map([
+    [UnitActivityTypes.NONE, ""],
+    [UnitActivityTypes.AWAKE, ""],
+    [UnitActivityTypes.HOLD, "LOC_UNITOPERATION_SKIP_TURN_NAME"],
+    [UnitActivityTypes.SLEEP, "LOC_UNITOPERATION_SLEEP_NAME"],
+    [UnitActivityTypes.HEAL, "LOC_UNITOPERATION_HEAL_NAME"],
+    [UnitActivityTypes.SENTRY, "LOC_UNITOPERATION_ALERT_NAME"],
+    [UnitActivityTypes.INTERCEPT, ""],
+    [UnitActivityTypes.OPERATION, ""],
+    [UnitActivityTypes.JUMP, ""],
+]);
+const DISTRICT_ICONS = new Map([
+    [DistrictTypes.INVALID, ""],
+    [DistrictTypes.CITY_CENTER, "blp:city_urban"],
+    [DistrictTypes.RURAL, "blp:city_rural"],
+    [DistrictTypes.URBAN, "blp:city_urban"],
+    [DistrictTypes.WONDER, ""],
+    [DistrictTypes.WILDERNESS, ""],
+]);
+const DOMAIN_VALUE = new Map(
+    ["DOMAIN_LAND", "DOMAIN_SEA", "DOMAIN_AIR"].map((d, i) => [d, i])
+);
+class bzUnitListModel {
+    player = Players.get(GameContext.localObserverID);
+    onUpdate;
+    updateGate = new UpdateGate(() => this.update());
+    pauseSelection = false;
+    _selectedUnit = null;
+    _types = new Map();
+    _typeList = [];
+    _units = new Map();
+    _unitGroups = new Map();
+    _unitList = [];
+    constructor() {
+        this.updateGate.call("constructor");
+        engine.on("UnitActivityChanged", this.onUnitUpdate, this);
+        engine.on("UnitAddedToArmy", this.onUnitUpdate, this);
+        engine.on("UnitAddedToMap", this.onUnitUpdate, this);
+        engine.on("UnitBermudaTeleported", this.onUnitUpdate, this);
+        engine.on("UnitDamageChanged", this.onUnitUpdate, this);
+        engine.on("UnitExperienceChanged", this.onUnitUpdate, this);
+        engine.on("UnitMoved", this.onUnitUpdate, this);
+        engine.on("UnitMovementPointsChanged", this.onUnitUpdate, this);
+        engine.on("UnitPromoted", this.onUnitUpdate, this);
+        engine.on("UnitRemovedFromArmy", this.onUnitUpdate, this);
+        engine.on("UnitRemovedFromMap", this.onUnitUpdate, this);
+        engine.on("UnitUpgraded", this.onUnitUpdate, this);
+        engine.on("UnitSelectionChanged", this.onUnitSelection, this);
+    }
+    set updateCallback(callback) {
+        this.onUpdate = callback;
+    }
+    get selectedUnit() {
+        return this._selectedUnit;
+    }
+    get types() {
+        return this._types;
+    }
+    get typeList() {
+        return this._typeList;
+    }
+    get units() {
+        return this._units;
+    }
+    get unitGroups() {
+        return this._unitGroups;
+    }
+    get unitList() {
+        return this._unitList;
+    }
+    update() {
+        this._units = new Map();
+        this._unitGroups = new Map();
+        this.player = Players.get(GameContext.localObserverID);
+        if (this.player?.Units == null) return;
+        for (const id of this.player.Units.getUnitIds()) {
+            this.updateUnit(id);
+        }
+        this.updateDisplay();
+    }
+    updateDisplay() {
+        this._unitList = [...this._units.values()];
+        const nameSort = (a, b) => {
+            const aName = Locale.compose(a).toUpperCase();
+            const bName = Locale.compose(b).toUpperCase();
+            return Locale.compare(aName, bName);
+        };
+        const typeSort = (a, b) => {
+            if (a.combat != b.combat) return b.combat - a.combat;
+            const aDomain = DOMAIN_VALUE.get(a.domain);
+            const bDomain = DOMAIN_VALUE.get(b.domain);
+            if (aDomain != bDomain) return aDomain - bDomain;
+            if (a.isUnique && !b.isUnique) return -1;
+            if (b.isUnique && !a.isUnique) return +1;
+            if (a.age.ChronologyIndex != b.age.ChronologyIndex) {
+                return a.age.ChronologyIndex - b.age.ChronologyIndex;
+            }
+            return nameSort(a.name, b.name);
+        }
+        this._typeList.sort(typeSort);
+        const unitSort = (a, b) => {
+            if (a.isVictoryUnit && !b.isVictoryUnit) return -1;
+            if (b.isVictoryUnit && !a.isVictoryUnit) return +1;
+            if (a.armyId == b.armyId && a.armyId != -1) {
+                if (a.isCommander) return -1;
+                if (b.isCommander) return +1;
+                if (a.isReinforcement && !b.isReinforcement) return +1;
+                if (b.isReinforcement && !a.isReinforcement) return -1;
+                return a.index - b.index;
+            }
+            a = this._unitGroups.get(a.armyId) ?? a;
+            b = this._unitGroups.get(b.armyId) ?? b;
+            if (a.combat <= 0 || b.combat <= 0) {
+                if (a.combat != b.combat) return b.combat - a.combat;
+            }
+            const aDomain = DOMAIN_VALUE.get(a.domain);
+            const bDomain = DOMAIN_VALUE.get(b.domain);
+            if (aDomain != bDomain) return aDomain - bDomain;
+            if (a.isCommander && !b.isCommander) return -1;
+            if (b.isCommander && !a.isCommander) return +1;
+            if (a.isCommander && b.isCommander) {
+                if (a.age.ChronologyIndex != b.age.ChronologyIndex) {
+                    return a.age.ChronologyIndex - b.age.ChronologyIndex;
+                }
+                if (a.totalXP != b.totalXP) return b.totalXP - a.totalXP;
+                return nameSort(a.name, b.name) || a.index - b.index;
+            }
+            if (a.combat != b.combat) return b.combat - a.combat;
+            if (a.isUnique && !b.isUnique) return -1;
+            if (b.isUnique && !a.isUnique) return +1;
+            if (a.age.ChronologyIndex != b.age.ChronologyIndex) {
+                return a.age.ChronologyIndex - b.age.ChronologyIndex;
+            }
+            const lex = nameSort(a.name, b.name);
+            if (lex) return lex;
+            if (a.movesLeft && !b.movesLeft) return -1;
+            if (b.movesLeft && !a.movesLeft) return +1;
+            if (a.operationName != b.operationName) {
+                return nameSort(a.operationName, b.operationName);
+            }
+            if (a.isGarrison && !b.isGarrison) return +1;
+            if (b.isGarrison && !a.isGarrison) return -1;
+            return a.index - b.index;
+        };
+        this._unitList.sort(unitSort);
+        this._types = new Map();
+        this._typeList = [];
+        for (const unit of this._unitList) {
+            if (unit.info.CoreClass == "CORE_CLASS_MILITARY") continue;
+            if (unit.isTradeUnit || unit.isVictoryUnit) continue;
+            const tlist = this._types.get(unit.icon) ?? [];
+            if (tlist.length == 0) {
+                this._types.set(unit.icon, tlist);
+                this._typeList.push(unit);
+            }
+            tlist.push(unit.localId);
+        }
+        if (this.onUpdate) this.onUpdate(this);
+        window.dispatchEvent(new CustomEvent("bz-model-units-update"));
+    }
+    updateUnit(id) {
+        const unit = Units.get(id);
+        if (!unit) return;
+        const localId = unit.localId;
+        const isOnMap = unit.isOnMap;
+        const isCommander = unit.isCommanderUnit;
+        const isGreatPerson = unit.isGreatPerson;
+        const isTreasureFleet = Boolean(unit.getAssociatedDisbandCityId());
+        const level =
+            isCommander ? unit.Experience.getLevel :
+            isTreasureFleet ? unit.getDisbandVictoryPoints() :
+            void 0;
+        const age = GameInfo.Ages.lookup(unit.age);
+        const reinforcementArmyId = this.player.Armies
+            .getUnitReinforcementCommanderId(unit.id, this.player.id);
+        const isReinforcement = reinforcementArmyId != -1;
+        const armyId = isReinforcement ? reinforcementArmyId : unit.armyId.id;
+        const isPacked = armyId != -1 && !isCommander;
+        const info = GameInfo.Units.lookup(unit.type);
+        const type = info.UnitType;
+        const typeName = (() => {
+            if (!isGreatPerson) return info.Name;
+            const gplist = GameInfo.GreatPersonIndividuals;
+            const gp = gplist?.find(gp => gp.UnitType == type);
+            const gpclass = gp && GameInfo.GreatPersonClasses
+                .lookup(gp.GreatPersonClassType);
+            return gpclass?.Name ?? info.Name;
+        })();
+        const icon = Icon.getUnitIconFromDefinition(info);
+        const name = level ? `${unit.name} ${level}` : unit.name;
+        const domain = info.Domain;
+        const trait = info.TraitType;
+        const isUnique = Boolean(trait);
+        const isTradeUnit = TRADER_TYPES.has(unit.type);
+        const isVictoryUnit = info.VictoryUnit;
+        const stats = GameInfo.Unit_Stats.lookup(type);
+        const combat =
+            info.FormationClass == "FORMATION_CLASS_COMMAND" ? 9999 :
+            isTradeUnit ? -9999 :
+            info.CoreClass == "CORE_CLASS_CIVILIAN" ? -1 :
+            stats ? Math.max(stats.Combat, stats.RangedCombat) : 0;
+        const health = unit.Health;
+        const damage = health?.damage ?? 0;
+        const maxHealth = health?.maxDamage ?? 0;
+        const healthLeft = maxHealth - damage;
+        const slashHealth = `${healthLeft}/${maxHealth}`;
+        const hasDamage = !!damage;
+        const moves = unit.Movement;
+        const movesLeft = moves?.movementMovesRemaining ?? 0;
+        const maxMoves = moves?.maxMoves ?? 0;
+        const slashMoves = `${movesLeft}/${maxMoves}`;
+        const canMove = moves?.canMove;
+        const activityType = unit.activityType;
+        const operationType = unit.operationQueueSize ?
+            unit.getOperationType(0) : void 0;
+        const operation = operationType && GameInfo.UnitOperations.lookup(operationType);
+        const operationIcon = operation?.Icon ?? ACTIVITY_ICONS.get(activityType);
+        const operationName = operation?.Name ?? ACTIVITY_NAMES.get(activityType);
+        const isBusy = !!operationIcon;
+        const location = unit.location;
+        const districtID = MapCities.getDistrict(location.x, location.y);
+        const district = districtID && Districts.get(districtID);
+        const isHome = district?.owner == this.player.id;
+        const districtIcon = DISTRICT_ICONS.get(isHome ? district.type : -1);
+        const isGarrison = isHome && district.type == DistrictTypes.CITY_CENTER;
+        const promote = GameInfo.UnitCommands.lookup("UNITCOMMAND_PROMOTE");
+        const upgrade = GameInfo.UnitCommands.lookup("UNITCOMMAND_UPGRADE");
+        const xp = unit.Experience;
+        const totalXP = xp ? xp.spentExperience + xp.experiencePoints : void 0;
+        const canPromote = isCommander &&
+            Boolean(xp?.getStoredCommendations || xp?.getStoredPromotionPoints);
+        const canStartUpgrade = (filter) => Game.UnitCommands?.canStart(
+            unit.id, upgrade.CommandType, { X: -9999, Y: -9999 }, filter
+        );
+        const upgradeAvailable = canStartUpgrade(true);
+        const upgradeReady = canStartUpgrade(false);
+        const canUpgrade = upgradeAvailable?.Success;
+        const promotionBG =
+            canPromote ? "#00ccffaa" :
+            upgradeReady?.Success ? "#e5d2ac66" :
+            canUpgrade ? "#662211" :
+            null;
+        const promotionIcon =
+            canPromote ? promote.Icon :
+            canUpgrade ? upgrade.Icon :
+            null;
+        const promotionDetail = [];
+        if (canUpgrade) {
+            const pushDetail = (style, text) =>
+                promotionDetail.push(`[style:${style}]${Locale.compose(text)}[/style]`);
+            for (const desc of upgradeReady.AdditionalDescription || []) {
+                pushDetail("leading-normal", desc);
+            }
+            for (const fail of upgradeReady.FailureReasons || []) {
+                pushDetail("leading-normal text-negative", fail);
+            }
+        }
+        const promotionTooltip = promotionDetail.join("[n]");
+        const isDisabled = !canMove || isReinforcement || !isOnMap && !isPacked;
+        const selectId = { ...id };
+        const lookId = { ...id };
+        if (armyId != -1) lookId.id = armyId;
+        const data = JSON.stringify({ lookId, selectId });
+        const index = this._units.get(localId)?.index ?? this._units.size;
+        const entry = {
+            unit, id, localId, isOnMap, isCommander, isGreatPerson, age,
+            reinforcementArmyId, isReinforcement, armyId, isPacked,
+            info, type, typeName, icon, name, domain, trait,
+            isTreasureFleet, isUnique, isTradeUnit, isVictoryUnit,
+            stats, combat,
+            health, healthLeft, maxHealth, slashHealth, hasDamage,
+            moves, movesLeft, maxMoves, slashMoves, canMove,
+            activityType, operationType, operation, operationIcon, operationName, isBusy,
+            location, district, districtIcon, isGarrison,
+            totalXP, promotionBG, promotionIcon, promotionTooltip,
+            isDisabled, data, index,
+        };
+        if (isCommander) this._unitGroups.set(armyId, entry);
+        this._units.set(localId, entry);
+    }
+    selectUnit(localId) {
+        if (UI.Player.getHeadSelectedUnit()?.id == localId) {
+            UI.Player.deselectAllUnits();
+            LensManager.setActiveLens("fxs-default-lens");
+            return;
+        }
+        const unit = this._units.get(localId);
+        if (!unit) return;
+        const group = this._unitGroups.get(unit.armyId);
+        if (group && unit.isReinforcement) {
+            UI.Player.lookAtID(group.id);
+            UI.Player.selectUnit(group.id);
+        } else if (group && !unit.isCommander) {
+            this.pauseSelection = true;
+            UI.Player.lookAtID(group.id);
+            UI.Player.selectUnit(group.id);
+            requestAnimationFrame(() => {
+                this.pauseSelection = false;
+                UI.Player.selectUnit(unit.id);
+            });
+        } else if (unit.isOnMap) {
+            UI.Player.lookAtID(unit.id);
+            UI.Player.selectUnit(unit.id);
+        }
+    }
+    onUnitSelection(event) {
+        if (this.pauseSelection) return;
+        const id = event?.unit;
+        if (!id || ComponentID.isInvalid(id)) return;
+        this.updateUnit(id);
+        const selected = event.selected ? id : ComponentID.getInvalidID();
+        this._selectedUnit = this._units.get(selected.id);
+        this.updateDisplay();
+    }
+    onUnitUpdate(event) {
+        const id = event?.unit;
+        if (!id || ComponentID.isInvalid(id)) return;
+        if (id.owner != this.player.id) return;
+        this.updateGate.call("onUnitUpdate");
+    }
+}
+
+const bzUnitList = new bzUnitListModel();
+engine.whenReady.then(() => {
+  const updateModel = () => {
+    engine.updateWholeModel(bzUnitList);
+  };
+  engine.createJSModel("g_bzUnitListModel", bzUnitList);
+  bzUnitList.updateCallback = updateModel;
+});
+
+export { bzUnitList };

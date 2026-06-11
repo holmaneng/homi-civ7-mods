@@ -30,9 +30,37 @@
 		<!-- Game scope: load all JS feature handlers -->
 		<ActionGroup id="homi-mods-game" scope="game" criteria="always">
 			<Actions>
+				<ImportFiles>
+					<Item>map-trix-remixed/panels/panel-city-list.css</Item>
+					<Item>map-trix-remixed/panels/panel-units.css</Item>
+					<Item>icons/bz-wonder-decoration.png</Item>
+				</ImportFiles>
 				<UIScripts>
 					<Item>ui/toggle-production-building-info.js</Item>
 					<Item>ui/show-unit-base-type.js</Item>
+					<!-- map-trix-remixed: mini-map must load first (patches LensManager) -->
+					<Item>map-trix-remixed/mini-map/bz-panel-mini-map.js</Item>
+					<!-- map-trix-remixed: panels -->
+					<Item>map-trix-remixed/panels/model-city-list.js</Item>
+					<Item>map-trix-remixed/panels/panel-city-list.js</Item>
+					<Item>map-trix-remixed/panels/model-units.js</Item>
+					<Item>map-trix-remixed/panels/panel-units.js</Item>
+					<!-- map-trix-remixed: lenses (import mini-map internally for load order) -->
+					<Item>map-trix-remixed/lenses/bz-culture-borders-layer.js</Item>
+					<Item>map-trix-remixed/lenses/bz-city-borders-layer.js</Item>
+					<Item>map-trix-remixed/lenses/bz-discovery-layer.js</Item>
+					<Item>map-trix-remixed/lenses/bz-wonder-layer.js</Item>
+					<Item>map-trix-remixed/lenses/bz-fortification-layer.js</Item>
+					<Item>map-trix-remixed/lenses/bz-vegetation-layer.js</Item>
+					<Item>map-trix-remixed/lenses/homi-military-lens.js</Item>
+					<!-- settlement bounds / rail station / explorer decorations -->
+					<Item>map-trix-remixed/lenses/homi-settlement-bounds-layer.js</Item>
+					<Item>map-trix-remixed/lenses/homi-rail-station-layer.js</Item>
+					<Item>map-trix-remixed/lenses/homi-explorer-layer.js</Item>
+					<!-- diplomacy panel augmentations -->
+					<Item>ui/homi-player-diplomacy.js</Item>
+					<!-- unit hotkeys: G = pack, T = unpack -->
+					<Item>ui/homi-unit-hotkeys.js</Item>
 				</UIScripts>
 			</Actions>
 		</ActionGroup>

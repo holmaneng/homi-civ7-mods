@@ -22,6 +22,69 @@
 		<Row ActionId="toggle-production-building-info" Index="0" GestureType="KBMouse" GestureData="KEY_I" />
 	</InputActionDefaultGestures>
 
+	<!-- map-trix-remixed: open settlement / unit panels -->
+	<InputActions>
+		<Row ActionId="open-bz-city-panel" DeviceType="Keyboard"
+			Name="LOC_UI_KBM_OPEN_BZ_CITY_PANEL"
+			Description="LOC_UI_KBM_OPEN_BZ_CITY_PANEL_TT"
+			SortIndex="38" />
+		<Row ActionId="open-bz-units-panel" DeviceType="Keyboard"
+			Name="LOC_UI_KBM_OPEN_BZ_UNITS_PANEL"
+			Description="LOC_UI_KBM_OPEN_BZ_UNITS_PANEL_TT"
+			SortIndex="39" />
+	</InputActions>
+
+	<InputContextConstraints>
+		<Row ActionId="open-bz-city-panel" ContextId="World" />
+		<Row ActionId="open-bz-city-panel" ContextId="Unit" />
+		<Row ActionId="open-bz-units-panel" ContextId="World" />
+		<Row ActionId="open-bz-units-panel" ContextId="Unit" />
+	</InputContextConstraints>
+
+	<InputActionDefaultGestures>
+		<Row ActionId="open-bz-city-panel"  Index="0" GestureType="KBMouse" GestureData="KEY_Q" />
+		<Row ActionId="open-bz-units-panel" Index="0" GestureType="KBMouse" GestureData="KEY_E" />
+	</InputActionDefaultGestures>
+
+	<!-- minor powers / city-states panel (key 9) -->
+	<InputActions>
+		<Row ActionId="homi-minor-powers-panel" DeviceType="Keyboard"
+			Name="LOC_UI_DIPLOMACY_ACTIONS_INDEPENDENTS_AND_CITY_STATES"
+			Description="LOC_UI_DIPLOMACY_ACTIONS_INDEPENDENTS_AND_CITY_STATES"
+			SortIndex="40" />
+	</InputActions>
+
+	<InputContextConstraints>
+		<Row ActionId="homi-minor-powers-panel" ContextId="World" />
+		<Row ActionId="homi-minor-powers-panel" ContextId="Unit" />
+	</InputContextConstraints>
+
+	<InputActionDefaultGestures>
+		<Row ActionId="homi-minor-powers-panel" Index="0" GestureType="KBMouse" GestureData="KEY_9" />
+	</InputActionDefaultGestures>
+
+	<!-- unit pack / unpack hotkeys -->
+	<InputActions>
+		<Row ActionId="homi-pack-unit" DeviceType="Keyboard"
+			Name="LOC_UNITCOMMAND_ADD_TO_ARMY_UNIT_ACTION"
+			Description="LOC_UNITCOMMAND_ADD_TO_ARMY_UNIT_ACTION"
+			SortIndex="40" />
+		<Row ActionId="homi-unpack-unit" DeviceType="Keyboard"
+			Name="LOC_UNITCOMMAND_REMOVE_FROM_ARMY_UNIT_ACTION"
+			Description="LOC_UNITCOMMAND_REMOVE_FROM_ARMY_UNIT_ACTION"
+			SortIndex="41" />
+	</InputActions>
+
+	<InputContextConstraints>
+		<Row ActionId="homi-pack-unit"   ContextId="Unit" />
+		<Row ActionId="homi-unpack-unit" ContextId="Unit" />
+	</InputContextConstraints>
+
+	<InputActionDefaultGestures>
+		<Row ActionId="homi-pack-unit"   Index="0" GestureType="KBMouse" GestureData="KEY_G" />
+		<Row ActionId="homi-unpack-unit" Index="0" GestureType="KBMouse" GestureData="KEY_T" />
+	</InputActionDefaultGestures>
+
 	<!-- Add new input actions below this line -->
 
 </Database>

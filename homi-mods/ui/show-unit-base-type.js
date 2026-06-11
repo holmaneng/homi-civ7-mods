@@ -1,9 +1,10 @@
-// Displays a subtle inline unit label (e.g. "Land · Infantry II") to the right of the
+// Displays a subtle inline unit class label (e.g. "Land · Infantry II") to the right of the
 // unit name in the production chooser panel.
 //
 // Data sources:
-//   TypeTags  → maps each UnitType to its UNIT_CLASS_* tag
-//   Units     → provides the Tier (1/2/3) and Domain per unit
+//   TypeTags     → maps each UnitType to its UNIT_CLASS_* tag
+//   Units        → provides Tier (1/2/3) and Domain per unit
+//   UnitReplaces → identifies civ-unique units and what they replace
 //
 // DOM strategy: label is appended inside the name span so it flows inline. Solid.js
 // only manages the text node it inserted; our span at the end is not touched by it.
@@ -37,16 +38,32 @@ const DOMAIN_LABELS = {
 // Hardcoded English labels — avoids Locale.compose dependency for mod-defined keys
 // that aren't reliably accessible in game scope.
 const CLASS_LABELS = {
-    UNIT_CLASS_AIR_FIGHTER:      "Fighter",
-    UNIT_CLASS_GROUND_ATTACKER:  "Strike",
-    UNIT_CLASS_BOMBER:           "Bomber",
-    UNIT_CLASS_INFANTRY:         "Infantry",
-    UNIT_CLASS_RANGED:           "Ranged",
-    UNIT_CLASS_CAVALRY:          "Cavalry",
-    UNIT_CLASS_SIEGE:            "Siege",
-    UNIT_CLASS_NAVAL:            "Naval",
-    UNIT_CLASS_RECON:            "Recon",
+    // Land
+    UNIT_CLASS_INFANTRY:        "Infantry",
+    UNIT_CLASS_RANGED:          "Ranged",
+    UNIT_CLASS_CAVALRY:         "Cavalry",
+    UNIT_CLASS_SIEGE:           "Siege",
+    UNIT_CLASS_RECON:           "Recon",
+    // Sea
+    UNIT_CLASS_NAVAL:           "Naval",
+    // Air — specific tags take priority over the generic SIEGE tag bombers also carry
+    UNIT_CLASS_BOMBER:          "Bomber",
+    UNIT_CLASS_AIR_FIGHTER:     "Fighter",
+    UNIT_CLASS_GROUND_ATTACKER: "Strike",
 };
+
+// Priority order: when a unit has multiple UNIT_CLASS tags, pick the most-specific role.
+const CLASS_PRIORITY_INDEX = new Map([
+    ["UNIT_CLASS_BOMBER",          0],
+    ["UNIT_CLASS_AIR_FIGHTER",     1],
+    ["UNIT_CLASS_GROUND_ATTACKER", 2],
+    ["UNIT_CLASS_SIEGE",           3],
+    ["UNIT_CLASS_CAVALRY",         4],
+    ["UNIT_CLASS_INFANTRY",        5],
+    ["UNIT_CLASS_RANGED",          6],
+    ["UNIT_CLASS_NAVAL",           7],
+    ["UNIT_CLASS_RECON",           8],
+]);
 
 // Labels shown for unique commanders, keyed by the base unit they replace.
 const COMMANDER_REPLACEMENT_LABELS = {
@@ -54,29 +71,20 @@ const COMMANDER_REPLACEMENT_LABELS = {
     UNIT_FLEET_COMMANDER: "Fleet Commander",
 };
 
-// Air-specific tags take priority over shared tags (e.g. UNIT_CLASS_BOMBER beats
-// UNIT_CLASS_SIEGE on Bomber/Heavy Bomber so they show "Bomber" not "Siege").
-const CLASS_PRIORITY_INDEX = new Map([
-    ["UNIT_CLASS_BOMBER",         0],
-    ["UNIT_CLASS_AIR_FIGHTER",    1],
-    ["UNIT_CLASS_GROUND_ATTACKER",2],
-    ["UNIT_CLASS_SIEGE",          3],
-    ["UNIT_CLASS_CAVALRY",        4],
-    ["UNIT_CLASS_INFANTRY",       5],
-    ["UNIT_CLASS_RANGED",         6],
-    ["UNIT_CLASS_NAVAL",          7],
-    ["UNIT_CLASS_RECON",          8],
-]);
-
 // uniqueUnitType → replacedUnitType (e.g. UNIT_BALIK → UNIT_ARMY_COMMANDER)
 const unitReplacesMap = new Map();
+// Unique missionaries (replace UNIT_MISSIONARY) → show "Missionary"
+const missionaryReplacements = new Set();
 for (const row of GameInfo.UnitReplaces) {
     unitReplacesMap.set(row.CivUniqueUnitType, row.ReplacesUnitType);
+    if (row.ReplacesUnitType === "UNIT_MISSIONARY") {
+        missionaryReplacements.add(row.CivUniqueUnitType);
+    }
 }
 
-// unitType string → best UNIT_CLASS_* tag (combat classes only; commanders handled separately)
+// unitType → best UNIT_CLASS_* combat tag
 const unitClassMap = new Map();
-// Set of unitTypes that are commanders (have UNIT_CLASS_COMMAND or UNIT_CLASS_ARMY_COMMANDER)
+// unitType → is a commander (has UNIT_CLASS_COMMAND or UNIT_CLASS_ARMY_COMMANDER)
 const commanderUnitTypes = new Set();
 for (const row of GameInfo.TypeTags) {
     if (row.Tag === "UNIT_CLASS_COMMAND" || row.Tag === "UNIT_CLASS_ARMY_COMMANDER") {
@@ -91,7 +99,7 @@ for (const row of GameInfo.TypeTags) {
     }
 }
 
-// unitType string → tier and domain
+// unitType → tier number; unitType → domain string
 const unitTierMap   = new Map();
 const unitDomainMap = new Map();
 for (const unit of GameInfo.Units) {
@@ -100,8 +108,10 @@ for (const unit of GameInfo.Units) {
 }
 
 function getLabelText(unitType) {
-    // Commander handling: base commanders get no label; unique replacements get
-    // "Army Commander" / "Fleet Commander" based on what they replace.
+    // Unique missionaries
+    if (missionaryReplacements.has(unitType)) return "Missionary";
+
+    // Commanders: base Army/Fleet Commander → no label; unique replacements → role label
     if (commanderUnitTypes.has(unitType)) {
         const replacedType = unitReplacesMap.get(unitType);
         if (!replacedType) return null;
@@ -112,14 +122,48 @@ function getLabelText(unitType) {
     const classLabel = classTag ? CLASS_LABELS[classTag] : null;
     if (!classLabel) return null;
 
-    const tier        = unitTierMap.get(unitType) ?? 0;
-    const roman       = TIER_ROMAN[tier] ?? String(tier);
-    const roleWithTier = tier >= 1 ? `${classLabel} ${roman}` : classLabel;
+    const domain     = DOMAIN_LABELS[unitDomainMap.get(unitType)] ?? null;
+    const prefix     = domain ? `${domain} · ` : "";
+    const tier       = unitTierMap.get(unitType) ?? 0;
+    const tierSuffix = tier >= 1 ? ` ${TIER_ROMAN[tier] ?? String(tier)}` : "";
 
-    const domain      = unitDomainMap.get(unitType);
-    const domainLabel = domain ? DOMAIN_LABELS[domain] : null;
-    return domainLabel ? `${domainLabel} · ${roleWithTier}` : roleWithTier;
+    return `${prefix}${classLabel}${tierSuffix}`;
 }
+
+// ─── DEBUG: remove before shipping ──────────────────────────────────────────
+// Open the in-game browser console and look for "[homi] unit labels" entries.
+// "MISSING" lines are units that got no label — paste them here so we can fix.
+(function debugUnitLabels() {
+    const allUnitTypes = new Set([
+        ...unitClassMap.keys(),
+        ...commanderUnitTypes,
+        ...missionaryReplacements,
+        ...unitReplacesMap.keys(),
+        ...unitDomainMap.keys(),
+    ]);
+
+    const missing = [];
+    const labelled = [];
+
+    for (const unitType of [...allUnitTypes].sort()) {
+        const label = getLabelText(unitType);
+        if (label) {
+            labelled.push(`  ${unitType} → "${label}"`);
+        } else {
+            const tags = [...GameInfo.TypeTags]
+                .filter(r => r.Type === unitType)
+                .map(r => r.Tag);
+            const domain   = unitDomainMap.get(unitType)  ?? "(none)";
+            const tier     = unitTierMap.get(unitType)    ?? "(none)";
+            const replaces = unitReplacesMap.get(unitType) ?? "(none)";
+            missing.push(`  MISSING ${unitType} | tags=[${tags.join(", ")}] domain=${domain} tier=${tier} replaces=${replaces}`);
+        }
+    }
+
+    console.log("[homi] unit labels — labelled:\n" + labelled.join("\n"));
+    console.log("[homi] unit labels — MISSING (no label assigned):\n" + (missing.length ? missing.join("\n") : "  (none)"));
+})();
+// ─────────────────────────────────────────────────────────────────────────────
 
 function updateUnitTypeLabel(item) {
     const unitType = item.getAttribute("data-type");
